@@ -82,16 +82,36 @@ class ViewCadastrar(tk.Toplevel):
         self.botaoClear.pack(side='left', pady=5)
 
 #VIEWLISTAR----------------------------------------------------------------------
-class ViewListar(tk.Toplevel):
+class ViewListar:
     def __init__(self, mensagem):
         messagebox.showinfo('Professores Cadastrados:', mensagem)
 
 #VIEWFATURAMENTO----------------------------------------------------------------------
+class ViewFaturamento(tk.Toplevel):
+    def __init__(self, controlador):
+        tk.Toplevel.__init__(self)
+        self.controlador = controlador
+        self.geometry( '300x250')
+        self.title('Faturamento:')
+
+        self.frameconsulta = tk.Frame(self)
+        self.frameconsulta.pack()
+        self.labelconsulta = tk.Label(self.frameconsulta, text='Digite o cpf:')
+        self.labelconsulta.pack(side='left')
+        self.inputconsulta = tk.Entry(self.frameconsulta, width=20)
+        self.inputconsulta.pack(side='left')
+        self.framebotao = tk.Frame(self)
+        self.framebotao.pack()
+        self.botaoconsulta = tk.Button(self.framebotao, text='Consultar', command= self.controlador.faturamentoProfessor)
+        self.botaoconsulta.pack(side='left')
+        self.botaolimpa = tk.Button(self.framebotao, text='Limpar', command=self.controlador.limparCampoConsulta)
+        self.botaolimpa.pack(side='left')      
 
 #CONTROLADORPROFISSIONAL--------------------------------------------------------
 class ControladorProfissional:
-    def __init__(self):
+    def __init__(self, controladorPrincipal):
         self.listaProfissionais = []
+        self.controladorPrincipal = controladorPrincipal
 
     def cadastrarProfissional(self):
         self.ViewCadastrar = ViewCadastrar(self)
@@ -104,8 +124,8 @@ class ControladorProfissional:
             mensagem+='-------------------------------------------------------------------\n'
         self.ViewListar = ViewListar(mensagem)
 
-    # def faturamentoProfissionais(self):
-    #     self.ViewFaturamento = ViewFaturamento()
+    def faturamentoProfissional(self):
+        self.ViewFaturamento = ViewFaturamento(self)
         
 
     def salvarProfissional(self):
@@ -135,9 +155,64 @@ class ControladorProfissional:
             listaprof.append(prof.nome)
         return listaprof
     
+    def getlista(self):
+        listaprofgeral = []
+        for prof in self.listaProfissionais:
+            listaprofgeral.append(prof)
+        return listaprofgeral
+    
+    def getprof(self, cpf):
+        for prof in self.listaProfissionais:
+            if prof.cpf == cpf:
+                return prof
+
+    
+    def faturamentoProfessor(self):
+        cpf = self.ViewFaturamento.inputconsulta.get()
+        if not cpf:
+            messagebox.showerror('ERRO:', 'Todos os campos devem ser preenchidos!')
+            return
+        if len(cpf) != 14:
+            messagebox.showerror('ERRO:', 'CPF deve estar no formato ___.___.___-__')
+            return
+        prof = self.getprof(cpf)
+        if not prof:
+            messagebox.showerror('ERRO:', 'professor não cadastrado!')
+            return
+        listaaluno = self.controladorPrincipal.ControladorAluno.getlistaAluno()
+        faturamentoPilates = 0
+        faturamentoFuncional = 0
+        mensalidadeAluno = None
+        for aluno in listaaluno:
+            if aluno.professor == prof.nome:
+                if aluno.tipoAula == 'Pilates':
+                    custoProf = prof.valorPilates
+                    if aluno.nmrAulas == '2 aulas':
+                        mensalidadeAluno = custoProf
+                    elif aluno.nmrAulas == '3 aulas':
+                        mensalidadeAluno = custoProf * 1.4
+                    else:
+                        mensalidadeAluno = custoProf * 1.8
+                    faturamentoPilates += mensalidadeAluno
+                else:
+                    custoProf = prof.valorFuncional
+                    if aluno.nmrAulas == '2 aulas':
+                        mensalidadeAluno = custoProf
+                    elif aluno.nmrAulas == '3 aulas':
+                        mensalidadeAluno = custoProf * 1.4
+                    else:
+                        mensalidadeAluno = custoProf * 1.8
+                    faturamentoFuncional += mensalidadeAluno
+        mensagem = f'Faturamento de: {prof.nome}\nPilates: R${faturamentoPilates}\nFuncional: R${faturamentoFuncional}'
+        messagebox.showinfo('FATURAMENTO:', mensagem)
+        self.ViewFaturamento.destroy()    
+
     def limparCampos(self):
         self.ViewCadastrar.inputcpf.delete(0, tk.END)
         self.ViewCadastrar.inputnome.delete(0, tk.END)
         self.ViewCadastrar.inputemail.delete(0, tk.END)
         self.ViewCadastrar.inputpilates.delete(0, tk.END)
         self.ViewCadastrar.inputfuncional.delete(0, tk.END)
+
+    def limparCampoConsulta(self):
+        self.ViewFaturamento.inputconsulta.delete(0, tk.END)

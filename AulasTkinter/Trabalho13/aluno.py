@@ -86,14 +86,14 @@ class ViewCadastrar(tk.Toplevel):
         self.labelprof.pack(side='left')
         self.escolhaprof = tk.StringVar()
         self.comboprof = Combobox(self.frameprof, width=15, textvariable=self.escolhaprof)
-        self.comboprof.config(values=('--Selecione--', listaProfessor))
-        self.combotipo.current(0)
+        self.comboprof.config(values=['--Selecione--'] + listaProfessor)
+        self.comboprof.current(0)
         self.comboprof.pack(side='left')
 
         self.labelnmr = tk.Label(self.framenmraula, text='Número de aulas:')
         self.labelnmr.pack(side='left')
         self.escolhanmr = tk.StringVar()
-        self.combonmr = Combobox(self.framenmraula, width=15, textvariable=self.escolhaprof)
+        self.combonmr = Combobox(self.framenmraula, width=15, textvariable=self.escolhanmr)
         self.combonmr.config(values=('--Selecione--','2 aulas', '3 aulas', '4 aulas'))
         self.combonmr.current(0)
         self.combonmr.pack(side='left')
@@ -105,16 +105,35 @@ class ViewCadastrar(tk.Toplevel):
 
 #VIEWCCONSULTAR----------------------------------------------------------------------
 class ViewConsultar(tk.Toplevel):
-    def __init__(self):
-        pass
+    def __init__(self, controlador):
+        tk.Toplevel.__init__(self)
+        self.controlador = controlador
+        self.geometry('300x250')
+        self.title('Consultar Aluno')
+
+        self.frameconsulta = tk.Frame(self)
+        self.frameconsulta.pack()
+        self.labelconsulta = tk.Label(self.frameconsulta, text='Digite o cpf:')
+        self.labelconsulta.pack(side='left')
+        self.inputconsulta = tk.Entry(self.frameconsulta, width=20)
+        self.inputconsulta.pack(side='left')
+        self.framebotao = tk.Frame(self)
+        self.framebotao.pack()
+        self.botaoconsulta = tk.Button(self.framebotao, text='Consultar', command= self.controlador.procurarAluno)
+        self.botaoconsulta.pack(side='left')
+        self.botaolimpa = tk.Button(self.framebotao, text='Limpar', command=self.controlador.limparCampoConsulta)
+        self.botaolimpa.pack(side='left')
 
 #VIEWMOSTAR---------------------------------------------------------------------
-
+class ViewMostrar:
+    def __init__(self, mensagem):
+        messagebox.showinfo('Aluno encontrado:', mensagem)
 
 #CONTROLADORPROFISSIONAL--------------------------------------------------------
 class ControladorAluno:
     def __init__(self, controladorPrincipal):
         self.controladorPrincipal = controladorPrincipal
+        self.listaAlunos = []
 
     def cadastrarAluno(self):
         listaprofessor = self.controladorPrincipal.ControladorProfissional.getlistaprof()
@@ -124,7 +143,82 @@ class ControladorAluno:
         self.ViewConsultar = ViewConsultar(self)
 
     def salvarAluno(self):
-        pass
+        cpf = self.ViewCadastrar.inputcpf.get()
+        nome = self.ViewCadastrar.inputnome.get()
+        email = self.ViewCadastrar.inputemail.get()
+        tipoAula = self.ViewCadastrar.escolhatipo.get()
+        professor = self.ViewCadastrar.escolhaprof.get()
+        nmraulas = self.ViewCadastrar.escolhanmr.get()
+        if not cpf or not nome or not email or not tipoAula or not professor or not nmraulas:
+            messagebox.showerror('ERRO:', 'Todos os campos devem ser preenchidos!')
+            return
+        if len(cpf) != 14:
+            messagebox.showerror('ERRO:', 'CPF deve estar no formato ___.___.___-__')
+            return
+        if tipoAula == '--Selecione--' or professor == '--Selecione--' or nmraulas == '--Selecione--':
+            messagebox.showerror('ERRO:', 'Todos os campos devem ser preenchidos!')
+            return
+        for alun in self.listaAlunos:
+            if alun.nome == nome or alun.cpf == cpf:
+                messagebox.showerror('ERRO:', 'O aluno ja está cadastrado!')
+                return
+        aluno = Aluno(cpf, nome, email, tipoAula, professor, nmraulas)
+        self.listaAlunos.append(aluno)
+        messagebox.showinfo('SUCESSO:', 'Aluno cadastrado com sucesso!')
+        self.ViewCadastrar.destroy()
+
+    def getAluno(self, cpf):
+        for alun in self.listaAlunos:
+            if alun.cpf == cpf:
+                return alun
+            
+    def getlistaAluno(self):
+        listaaluno = []
+        for alun in self.listaAlunos:
+            listaaluno.append(alun)
+        return listaaluno
+
+    def getcustoProf(self, professor, aluno):
+        custoProf = None
+        for prof in professor:
+            if aluno.professor == prof.nome:
+                if aluno.tipoAula == 'Pilates':
+                    custoProf = prof.valorPilates
+                else:
+                    custoProf = prof.valorFuncional
+        return custoProf
+
+    def procurarAluno(self):
+        cpf = self.ViewConsultar.inputconsulta.get()
+        if not cpf:
+            messagebox.showerror('ERRO:', 'Todos os campos devem ser preenchidos!')
+            return
+        aluno = self.getAluno(cpf)
+        if not aluno:
+            messagebox.showerror('ERRO:', 'Aluno não encontrado')
+            return
+        professor = self.controladorPrincipal.ControladorProfissional.getlista()
+        custoProf = self.getcustoProf(professor, aluno)
+        mensalidadeAluno = None
+        aulas3 = custoProf * 1.4
+        aulas4 = custoProf * 1.8
+        if aluno.nmrAulas == '2 aulas':
+            mensalidadeAluno = custoProf + (custoProf/2)
+        elif aluno.nmrAulas == '3 aulas':
+            mensalidadeAluno = aulas3 + (aulas3/2)
+        else:
+            mensalidadeAluno = aulas4 + (aulas4/2)
+        mensagem = f'Aluno: {aluno.nome}\nCPF: {aluno.cpf}\nEmail: {aluno.email}\nTipo de Aula: {aluno.tipoAula}\nProfessor: {aluno.professor}\nNúmero de aulas: {aluno.nmrAulas}\nMensalidade: {mensalidadeAluno}'
+        self.mostraAluno = ViewMostrar(mensagem)
+        self.ViewConsultar.destroy()
+
+    def limparCampoConsulta(self):
+        self.ViewConsultar.inputconsulta.delete(0, tk.END)
 
     def limparCampos(self):
-        pass
+        self.ViewCadastrar.inputcpf.delete(0, tk.END)
+        self.ViewCadastrar.inputemail.delete(0, tk.END)
+        self.ViewCadastrar.inputnome.delete(0, tk.END)
+        self.ViewCadastrar.combotipo.current(0)
+        self.ViewCadastrar.comboprof.current(0)
+        self.ViewCadastrar.combonmr.current(0)
